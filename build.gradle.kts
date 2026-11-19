@@ -11,7 +11,7 @@ sourceSets.main{
 // - latest: depend on the latest release of mindustry
 // - be: depend on the very latest commit of mindustry
 // - v<number>: depend on a specific version
-val mindustryVersion = "v160"
+val mindustryVersion = "v160.3"
 val isWindows = System.getProperty("os.name").lowercase().contains("windows")
 val sdkRoot: String? = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
 val projectName = project.name
@@ -51,10 +51,13 @@ java{
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-dependencies{
-    compileOnly(if(mindustryVersion == "be") "Anuken:MindustryBuilds:latest" else "Anuken:Mindustry:$mindustryVersion")
-}
+//dependencies{
+//    compileOnly(if(mindustryVersion == "be") "Anuken:MindustryBuilds:latest" else "Anuken:Mindustry:$mindustryVersion")
+//}
 
+dependencies{
+    compileOnly(files("libs/dependencies.jar"))
+}
 tasks.jar{
     archiveFileName.set("${projectName}Desktop.jar")
 
