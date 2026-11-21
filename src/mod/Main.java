@@ -9,19 +9,14 @@ import arc.graphics.g2d.Lines;
 import arc.input.KeyBind;
 import arc.input.KeyCode;
 import arc.math.Mathf;
-import arc.math.geom.Vec2;
-import arc.scene.Group;
 import arc.struct.Queue;
 import arc.util.Interval;
 import arc.util.pooling.Pool;
 import mindustry.Vars;
-import mindustry.ai.BlockIndexer;
 import mindustry.content.Blocks;
-import mindustry.core.World;
 import mindustry.entities.Effect;
 import mindustry.game.EventType;
 import mindustry.gen.Building;
-import mindustry.gen.Groups;
 import mindustry.graphics.Layer;
 import mindustry.input.Binding;
 import mindustry.input.Placement;
@@ -158,6 +153,7 @@ public class Main {
             if(!configQueue.isEmpty() && timer.get(0,Core.settings.getInt("batch-config-configuration-interval"))){
                 var c = configQueue.removeFirst();
                 c.configure();
+                configPool.free(c);
             }
         });
 
