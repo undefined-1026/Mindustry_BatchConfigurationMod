@@ -18,7 +18,8 @@ public class BatchConfigurationMod extends Mod {
         Events.on(EventType.ClientLoadEvent.class, e->{
             Core.app.post(()->{
                 Vars.ui.settings.addCategory("@settings.batch-configuration-mod", t->{
-                    t.sliderPref("batch-config-configuration-interval",10,2,120,3,s->s+" tick");
+                    t.sliderPref("batch-config-configuration-interval",10,1,60,3,s->s+" tick");
+                    t.sliderPref("batch-config-effect-strength",40,0,100,5,s->s+"%");
                 });
                 Main.init();
             });
