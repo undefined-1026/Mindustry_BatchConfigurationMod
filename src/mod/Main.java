@@ -8,16 +8,20 @@ import arc.graphics.g2d.Font;
 import arc.graphics.g2d.Lines;
 import arc.input.KeyBind;
 import arc.input.KeyCode;
+import arc.math.Mathf;
 import arc.math.geom.Vec2;
+import arc.scene.Group;
 import arc.struct.Queue;
 import arc.util.Interval;
 import arc.util.pooling.Pool;
 import mindustry.Vars;
+import mindustry.ai.BlockIndexer;
 import mindustry.content.Blocks;
 import mindustry.core.World;
 import mindustry.entities.Effect;
 import mindustry.game.EventType;
 import mindustry.gen.Building;
+import mindustry.gen.Groups;
 import mindustry.graphics.Layer;
 import mindustry.input.Binding;
 import mindustry.input.Placement;
@@ -25,8 +29,7 @@ import mindustry.ui.Fonts;
 import mindustry.world.Block;
 import mindustry.world.blocks.logic.LogicBlock;
 
-import static mindustry.Vars.tilesize;
-import static mindustry.Vars.world;
+import static mindustry.Vars.*;
 
 
 public class Main {
@@ -39,7 +42,7 @@ public class Main {
     public static Queue<Config> configQueue = new Queue<>();
     public static Effect effect = new Effect(40f,e->{
         if (e.data instanceof Block b) {
-            Draw.color(Color.white,e.fout()*0.45f);
+            Draw.color(e.color,e.fout());
             Draw.rect(b.fullIcon,e.x,e.y);
         }
     });
@@ -49,6 +52,7 @@ public class Main {
             return new Config();
         }
     };
+    private static Color effectColor = Color.white.cpy().lerp(Color.black,0.4f);
 
     public static class Config implements Pool.Poolable {
         @Override
@@ -71,7 +75,7 @@ public class Main {
         public void configure(){
             if(target == null)return;
             target.configure(config);
-            effect.at(target.x,target.y,0,Color.white,target.block);
+            effect.at(target.x,target.y,0, effectColor,target.block);
         }
         Object config;
         Building target;
@@ -87,48 +91,50 @@ public class Main {
             sy = ey;
             ey = t;
         }
-        for (int x = sx; x <= ex; x++) {
-            for (int y = sy; y <= ey; y++) {
-                var b = Vars.world.build(x,y);
-                if(b!=null && b.block == scr.block && b.team == scr.team){
-                    if(Vars.net.client()){
-                        configQueue.addLast(configPool.obtain().set(config,b));
-                    }else{
-                        if(b instanceof LogicBlock.LogicBuild log && scr instanceof LogicBlock.LogicBuild slog && config instanceof byte[] bytes){
-                            log.readCompressed(bytes,false);
+        int ssx=sx,ssy=sy,eex=ex,eey=ey;
+        Vars.indexer.eachBlock(player.team(),(sx+ex)/2f * tilesize,(sy+ey)/2f * tilesize, Mathf.len(ex-sx,ey-sy) * tilesize * 0.5f+5f,
+                b->b.tile.x>=ssx&&b.tile.x<=eex && b.tile.y>=ssy&&b.tile.y<=eey,
+                b->{
+                    if(b!=null && b.block == scr.block && b.team == scr.team){
+                        if(Vars.net.client()){
+                            configQueue.addLast(configPool.obtain().set(config,b));
                         }else{
-                            b.configure(config);
-                        }
+                            if(b instanceof LogicBlock.LogicBuild log && scr instanceof LogicBlock.LogicBuild slog && config instanceof byte[] bytes){
+                                log.readCompressed(bytes,false);
+                            }else{
+                                b.configure(config);
+                            }
 
-                        effect.at(b.x,b.y,0,Color.white,b.block);
+                            effect.at(b.x,b.y,0,effectColor,b.block);
+                        }
                     }
-                }
-            }
-        }
+        });
     }
 
     public static void init(){
         Events.run(EventType.Trigger.update,()->{
+            effectColor.set(1f,1f,1f).lerp(Color.black,1f-(Core.settings.getInt("batch-config-effect-strength") / 100f));
             configEX = t(Core.input.mouseWorldX());
             configEY = t(Core.input.mouseWorldY());
             if(Core.input.keyRelease(selectTarget)){
                 if(configSX ==-1 && configSY == -1) {
-                    var b = world.build(configEX,configEY);
+                    var b = world.build(configEX, configEY);
                     if (b != null && b.team() == Vars.player.team() && Vars.player.isValidController() && b.block.configurable) {
                         target = b;
-                        effect.at(target.x,target.y,0,Color.white,target.block);
+                        effect.at(target.x, target.y, 0, effectColor, target.block);
                     }
-                }else{
-                    if(!Vars.net.client() && target instanceof LogicBlock.LogicBuild slog){
-                        var c = LogicBlock.compress(slog.code,slog.links);
-                        batchConfig(configSX,configSY,configEX,configEY,target,c);
-                    }else{
-                        batchConfig(configSX,configSY,configEX,configEY,target,target.config());
-                    }
-                    configSX=-1;
-                    configSY=-1;
-                    target = null;
                 }
+            }
+            if(Core.input.keyRelease(batchConfig) &&( configSX !=-1 || configSY != -1)){
+                if(!Vars.net.client() && target instanceof LogicBlock.LogicBuild slog){
+                    var c = LogicBlock.compress(slog.code,slog.links);
+                    batchConfig(configSX,configSY,configEX,configEY,target,c);
+                }else{
+                    batchConfig(configSX,configSY,configEX,configEY,target,target.config());
+                }
+                configSX=-1;
+                configSY=-1;
+                if(selectTarget.value.key == batchConfig.value.key)target = null;
             }
             if(target!=null && Core.input.keyDown(batchConfig)){
                 if (configSX ==-1 && configSY == -1) {
